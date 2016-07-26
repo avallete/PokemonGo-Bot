@@ -37,8 +37,10 @@ from getpass import getpass
 import logging
 import requests
 from pokemongo_bot import logger
+from pokemongo_bot import human_behaviour
 from pokemongo_bot import PokemonGoBot
 from pokemongo_bot.cell_workers.utils import print_green, print_yellow, print_red
+from pgoapi.exceptions import NotLoggedInException
 
 if sys.version_info >= (2, 7, 9):
     ssl._create_default_https_context = ssl._create_unverified_context
@@ -191,6 +193,7 @@ def main():
     # log format
     #logging.basicConfig(level=logging.DEBUG, format='%(asctime)s [%(module)10s] [%(levelname)5s] %(message)s')
 
+    sleeptime = 720
     sys.stdout = codecs.getwriter('utf8')(sys.stdout)
     sys.stderr = codecs.getwriter('utf8')(sys.stderr)
 
@@ -208,7 +211,12 @@ def main():
         logger.log('[x] Starting PokemonGo Bot....', 'green')
 
         while True:
-            bot.take_step()
+		try:
+            		bot.take_step()
+		except NotLoggedInException:
+			logger.log("[x] Error NotLoggedIn, wait %s seconds and try to re-log user" % sleeptime, "red")
+                        human_behaviour.sleep(sleeptime)
+			bot.start()
 
     except KeyboardInterrupt:
         logger.log('[x] Exiting PokemonGo Bot', 'red')
