@@ -3,7 +3,7 @@
 import time
 from sets import Set
 from utils import distance
-from pokemongo_bot.human_behaviour import sleep
+from pokemongo_bot.human_behaviour import sleep, ponderated_binary
 from pokemongo_bot import logger
 
 class PokemonCatchWorker(object):
@@ -111,12 +111,13 @@ class PokemonCatchWorker(object):
                             id_list1 = self.count_pokemon_inventory()
                             self.api.catch_pokemon(encounter_id=encounter_id,
                                                    pokeball=pokeball,
-                                                   normalized_reticle_size=1.950,
+                                                   normalized_reticle_size=random.uniform(1.9, 2.4),
                                                    spawn_point_guid=spawnpoint_id,
-                                                   hit_pokemon=1,
-                                                   spin_modifier=1,
+                                                   hit_pokemon=ponderated_binary(1, 0, 76),
+                                                   spin_modifier=ponderated_binary(1, 0, 60)
                                                    NormalizedHitPosition=1)
                             response_dict = self.api.call()
+                            sleep(2)
 
                             if response_dict and \
                                 'responses' in response_dict and \
@@ -170,7 +171,7 @@ class PokemonCatchWorker(object):
                                         logger.log(
                                         '[x] Captured {}! [CP {}]'.format(pokemon_name, cp), 'green')
                             break
-        time.sleep(5)
+        sleep(7)
 
     def _transfer_low_cp_pokemon(self, value):
         self.api.get_inventory()
@@ -197,6 +198,7 @@ class PokemonCatchWorker(object):
 
     def _execute_pokemon_transfer(self, value, pokemon):
         if 'cp' in pokemon and pokemon['cp'] < value:
+	    sleep(2)
             self.api.release_pokemon(pokemon_id=pokemon['id'])
             response_dict = self.api.call()
 
