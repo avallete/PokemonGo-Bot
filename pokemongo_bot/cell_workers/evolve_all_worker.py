@@ -117,6 +117,7 @@ class EvolveAllWorker(object):
         else:
             # cache pokemons we can't evolve. Less server calls
             cache[pokemon_name] = 1
+            print("[x] Can't evolve pokemon %s. Sorry :(" % pokemon_name)
         sleep(5.7)
 
     # TODO: move to utils. These methods are shared with other workers.

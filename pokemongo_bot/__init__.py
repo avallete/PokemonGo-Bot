@@ -23,6 +23,9 @@ from item_list import Item
 class PokemonGoBot(object):
     def __init__(self, config):
         self.config = config
+	open("web/catchable-%s.json" % config.username, 'a').close()
+	open("web/inventory-%s.json" % config.username, 'a').close()
+	open("web/location-%s.json" % config.username, 'a').close()
         self.pokemon_list = json.load(open('data/pokemon.json'))
         self.item_list = json.load(open('data/items.json'))
 
