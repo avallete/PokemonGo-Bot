@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import time
+import random
 from sets import Set
 from utils import distance
 from pokemongo_bot.human_behaviour import sleep, ponderated_binary
