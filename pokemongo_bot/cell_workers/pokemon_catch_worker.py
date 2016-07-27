@@ -114,7 +114,7 @@ class PokemonCatchWorker(object):
                                                    normalized_reticle_size=random.uniform(1.9, 2.4),
                                                    spawn_point_guid=spawnpoint_id,
                                                    hit_pokemon=ponderated_binary(1, 0, 76),
-                                                   spin_modifier=ponderated_binary(1, 0, 60)
+                                                   spin_modifier=ponderated_binary(1, 0, 60),
                                                    NormalizedHitPosition=1)
                             response_dict = self.api.call()
                             sleep(2)
