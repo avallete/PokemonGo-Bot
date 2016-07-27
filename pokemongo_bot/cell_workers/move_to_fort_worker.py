@@ -1,4 +1,5 @@
 from utils import distance, format_dist
+from random import randrange
 from pokemongo_bot.human_behaviour import sleep
 from pokemongo_bot import logger
 
@@ -15,14 +16,14 @@ class MoveToFortWorker(object):
         lng = self.fort['longitude']
         fortID = self.fort['id']
         unit = self.config.distance_unit  # Unit to use when printing formatted distance
-
+	exec_dist = randrange(5, 10)
         dist = distance(self.position[0], self.position[1], lat, lng)
 
         # print('[#] Found fort {} at distance {}m'.format(fortID, dist))
         logger.log('[#] Found fort {} at distance {}'.format(
             fortID, format_dist(dist, unit)))
 
-        if dist > 10:
+        if dist > exec_dist:
             logger.log('[#] Need to move closer to Pokestop')
             position = (lat, lng, 0.0)
 

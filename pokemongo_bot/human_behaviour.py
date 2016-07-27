@@ -19,5 +19,5 @@ def random_lat_long_delta():
 def ponderated_binary(first, second, ponderation_level):
     """Return the random ponderated choice between first and second."""
     if randrange(0, 100) >= ponderation_level:
-        return second
-    return first
+        return (second)
+    return (first)

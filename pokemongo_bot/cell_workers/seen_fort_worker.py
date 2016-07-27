@@ -44,6 +44,7 @@ class SeenFortWorker(object):
                              player_latitude=f2i(self.position[0]),
                              player_longitude=f2i(self.position[1]))
         response_dict = self.api.call()
+	sleep(2)
         if 'responses' in response_dict and \
                 'FORT_SEARCH' in response_dict['responses']:
 

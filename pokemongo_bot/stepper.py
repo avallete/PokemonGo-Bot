@@ -5,11 +5,12 @@ import json
 import time
 import pprint
 
+from random import randrange
 from math import ceil
 from s2sphere import CellId, LatLng
 from google.protobuf.internal import encoder
 
-from human_behaviour import sleep, random_lat_long_delta
+from human_behaviour import sleep, random_lat_long_delta, ponderated_binary
 from cell_workers.utils import distance, i2f, format_time
 
 from pgoapi.utilities import f2i, h2f
@@ -82,7 +83,7 @@ class Stepper(object):
                     dLng + random_lat_long_delta()
                 self.api.set_position(cLat, cLng, alt)
                 self.bot.heartbeat()
-                sleep(1)  # sleep one second plus a random delta
+                sleep(ponderated_binary(1, randrange(5, 10), 90))  # sleep one second 9/10 times plus a random delta
                 self._work_at_position(
                     i2f(self.api._position_lat), i2f(self.api._position_lng),
                     alt, False)
