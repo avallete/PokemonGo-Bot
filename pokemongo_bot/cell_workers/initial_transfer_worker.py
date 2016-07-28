@@ -1,5 +1,6 @@
 import json
 
+from random import uniform
 from pokemongo_bot.human_behaviour import sleep
 from pokemongo_bot import logger
 
@@ -38,7 +39,7 @@ class InitialTransferWorker(object):
                     self.api.release_pokemon(
                         pokemon_id=pokemon_groups[id][group_cp[x]])
                     response_dict = self.api.call()
-                    sleep(3.7)
+                    sleep(uniform(3.7, 5.8))
 
         logger.log('[x] Transferring Done.')
 

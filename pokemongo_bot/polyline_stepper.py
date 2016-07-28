@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from polyline_walker import PolylineWalker
 from stepper import Stepper
-from human_behaviour import sleep, random_lat_long_delta
+from human_behaviour import sleep, ponderated_binary, random_lat_long_delta
 
 
 class PolylineStepper(Stepper):
@@ -21,7 +21,7 @@ class PolylineStepper(Stepper):
             self.api.set_position(cLat, cLng, alt)
             self.bot.heartbeat()
             self._work_at_position(i2f(self.api._position_lat), i2f(self.api._position_lng), alt, False)
-            sleep(1)  # sleep one second plus a random delta
+            sleep(ponderated_binary(1, 3, 70))  # sleep one second plus a random delta
         if proposed_lat != self.api._position_lat and proposed_lng != self.api._position_lng:
             self._old_walk_to(speed, lat, lng, alt)
 
@@ -45,7 +45,7 @@ class PolylineStepper(Stepper):
                     dLng + random_lat_long_delta()
                 self.api.set_position(cLat, cLng, alt)
                 self.bot.heartbeat()
-                sleep(1)  # sleep one second plus a random delta
+                sleep(ponderated_binary(1, 3, 80))  # sleep one second plus a random delta
                 self._work_at_position(
                     i2f(self.api._position_lat), i2f(self.api._position_lng),
                     alt, False)
