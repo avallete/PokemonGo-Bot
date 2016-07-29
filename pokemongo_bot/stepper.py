@@ -11,7 +11,7 @@ from s2sphere import CellId, LatLng
 from google.protobuf.internal import encoder
 
 from human_behaviour import sleep, random_lat_long_delta, ponderated_binary
-from cell_workers.utils import distance, i2f, format_time
+from cell_workers.utils import distance, i2f, format_time, get_api_response
 
 from pgoapi.utilities import f2i, h2f
 import logger
@@ -100,7 +100,7 @@ class Stepper(object):
                                  since_timestamp_ms=timestamp,
                                  cell_id=cellid)
 
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         # pprint.pprint(response_dict)
         # Passing Variables through a file
         if response_dict and 'responses' in response_dict:

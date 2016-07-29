@@ -12,7 +12,7 @@ import logger
 import re
 from pgoapi import PGoApi
 from cell_workers import PokemonCatchWorker, SeenFortWorker, MoveToFortWorker, InitialTransferWorker, EvolveAllWorker
-from cell_workers.utils import distance
+from cell_workers.utils import distance, get_api_response
 from human_behaviour import sleep
 from stepper import Stepper
 from geopy.geocoders import GoogleV3
@@ -146,7 +146,7 @@ class PokemonGoBot(object):
         # ----------------------
         self.api.get_player()
 
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         #print('Response dictionary: \n\r{}'.format(json.dumps(response_dict, indent=2)))
         currency_1 = "0"
         currency_2 = "0"
@@ -200,7 +200,7 @@ class PokemonGoBot(object):
 
     def drop_item(self, item_id, count):
         self.api.recycle_inventory_item(item_id=item_id, count=count)
-        inventory_req = self.api.call()
+        inventory_req = get_api_response(self.api)
 
         # Example of good request response
         #{'responses': {'RECYCLE_INVENTORY_ITEM': {'result': 1, 'new_count': 46}}, 'status_code': 1, 'auth_ticket': {'expire_timestamp_ms': 1469306228058L, 'start': '/HycFyfrT4t2yB2Ij+yoi+on778aymMgxY6RQgvrGAfQlNzRuIjpcnDd5dAxmfoTqDQrbz1m2dGqAIhJ+eFapg==', 'end': 'f5NOZ95a843tgzprJo4W7Q=='}, 'request_id': 8145806132888207460L}
@@ -208,7 +208,7 @@ class PokemonGoBot(object):
 
     def update_inventory(self):
         self.api.get_inventory()
-        response = self.api.call()
+        response = get_api_response(self.api)
         self.inventory = list()
         if 'responses' in response:
             if 'GET_INVENTORY' in response['responses']:
@@ -233,7 +233,7 @@ class PokemonGoBot(object):
     def pokeball_inventory(self):
         self.api.get_player().get_inventory()
 
-        inventory_req = self.api.call()
+        inventory_req = get_api_response(self.api)
         inventory_dict = inventory_req['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']
 
         user_web_inventory = 'web/inventory-%s.json' % (self.config.username)
@@ -266,9 +266,9 @@ class PokemonGoBot(object):
     def item_inventory_count(self, id):
         self.api.get_player().get_inventory()
 
-        inventory_req = self.api.call()
-        inventory_dict = inventory_req['responses'][
-            'GET_INVENTORY']['inventory_delta']['inventory_items']
+        inventory_req = get_api_response(self.api)
+        inventory_dict = inventory_req['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']
+		
 
         item_count = 0
 
@@ -394,11 +394,11 @@ class PokemonGoBot(object):
         self.api.get_hatched_eggs()
         self.api.get_inventory()
         self.api.check_awarded_badges()
-        self.api.call()
+        get_api_response(self.api)
 
     def get_inventory_count(self, what):
         self.api.get_inventory()
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         if 'responses' in response_dict:
             if 'GET_INVENTORY' in response_dict['responses']:
                 if 'inventory_delta' in response_dict['responses'][
@@ -429,7 +429,7 @@ class PokemonGoBot(object):
 
     def get_player_info(self):
         self.api.get_inventory()
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         if 'responses' in response_dict:
             if 'GET_INVENTORY' in response_dict['responses']:
                 if 'inventory_delta' in response_dict['responses'][

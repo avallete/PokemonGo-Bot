@@ -1,5 +1,6 @@
 import json
 
+from utils import get_api_response
 from random import uniform
 from pokemongo_bot.human_behaviour import sleep
 from pokemongo_bot import logger
@@ -38,7 +39,7 @@ class InitialTransferWorker(object):
                         self.pokemon_list[id - 1]['Name'], group_cp[x]))
                     self.api.release_pokemon(
                         pokemon_id=pokemon_groups[id][group_cp[x]])
-                    response_dict = self.api.call()
+                    response_dict = get_api_response(self.api)
                     sleep(uniform(3.7, 5.8))
 
         logger.log('[x] Transferring Done.')
@@ -46,7 +47,7 @@ class InitialTransferWorker(object):
     def _initial_transfer_get_groups(self):
         pokemon_groups = {}
         self.api.get_player().get_inventory()
-        inventory_req = self.api.call()
+        inventory_req = get_api_response(self.api)
         inventory_dict = inventory_req['responses']['GET_INVENTORY'][
             'inventory_delta']['inventory_items']
 

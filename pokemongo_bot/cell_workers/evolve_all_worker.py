@@ -1,4 +1,4 @@
-from utils import distance, format_dist
+from utils import distance, format_dist, get_api_response
 from pokemongo_bot.human_behaviour import sleep
 from pokemongo_bot import logger
 from sets import Set
@@ -12,7 +12,7 @@ class EvolveAllWorker(object):
 
     def work(self):
         self.api.get_inventory()
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         cache = {}
 
         try:
@@ -49,7 +49,7 @@ class EvolveAllWorker(object):
 
     def _release_evolved(self, release_cand_list_ids):
         self.api.get_inventory()
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         cache = {}
 
         try:
@@ -108,7 +108,7 @@ class EvolveAllWorker(object):
             return
 
         self.api.evolve_pokemon(pokemon_id=pokemon_id)
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         status = response_dict['responses']['EVOLVE_POKEMON']['result']
         if status == 1:
             print('[#] Successfully evolved {} with {} cp!'.format(
@@ -123,11 +123,11 @@ class EvolveAllWorker(object):
     # TODO: move to utils. These methods are shared with other workers.
     def transfer_pokemon(self, pid):
         self.api.release_pokemon(pokemon_id=pid)
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
 
     def count_pokemon_inventory(self):
         self.api.get_inventory()
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         id_list = []
         return self.counting_pokemon(response_dict, id_list)
 

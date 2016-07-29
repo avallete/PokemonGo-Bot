@@ -1,4 +1,4 @@
-from utils import distance, format_dist
+from utils import distance, format_dist, get_api_response
 from random import randrange
 from pokemongo_bot.human_behaviour import sleep
 from pokemongo_bot import logger
@@ -33,7 +33,7 @@ class MoveToFortWorker(object):
                 self.api.set_position(*position)
 
             self.api.player_update(latitude=lat, longitude=lng)
-            response_dict = self.api.call()
+            response_dict = get_api_response(self.api)
             logger.log('[#] Arrived at Pokestop')
             sleep(2)
             return response_dict

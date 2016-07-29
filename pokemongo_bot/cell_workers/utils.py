@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import struct
+from pokemongo_bot import logger
+from pokemongo_bot.human_behaviour import sleep
 from math import cos, asin, sqrt
 from colorama import init
 init()
@@ -108,3 +110,20 @@ def print_yellow(message):
 
 def print_red(message):
     print(u'\033[91m' + message.decode('utf-8') + '\033[0m')
+
+def get_api_response(api):
+    """ Try 25 times to perform request with api.call until response is valid. """
+    limits = 25
+    requests_list = api._req_method_list
+    while limits > 0:
+        req_result = api.call()
+        if 'auth_ticket' in req_result.keys() and 'request_id' in req_result.keys():
+             return req_result
+        else:
+            logger.log("[X] Error with the api call. Resend request (%s/25)" % limits, 'yellow')
+            api._req_method_list = requests_list
+        limits -= 1
+        sleep(5)
+    logguer.log("[X] Failed to get valid response for request 25 times. Fatal Error.", "red")
+    return req_result
+

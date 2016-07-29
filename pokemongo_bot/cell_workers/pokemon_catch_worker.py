@@ -3,7 +3,7 @@
 import time
 import random
 from sets import Set
-from utils import distance
+from utils import distance, get_api_response
 from pokemongo_bot.human_behaviour import sleep, ponderated_binary
 from pokemongo_bot import logger
 
@@ -28,7 +28,7 @@ class PokemonCatchWorker(object):
         player_longitude = self.pokemon['longitude']
         self.api.encounter(encounter_id=encounter_id, spawnpoint_id=spawnpoint_id,
                            player_latitude=player_latitude, player_longitude=player_longitude)
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
 
         if response_dict and 'responses' in response_dict:
             if 'ENCOUNTER' in response_dict['responses']:
@@ -117,7 +117,7 @@ class PokemonCatchWorker(object):
                                                    hit_pokemon=ponderated_binary(1, 0, 76),
                                                    spin_modifier=ponderated_binary(1, 0, 60),
                                                    NormalizedHitPosition=1)
-                            response_dict = self.api.call()
+                            response_dict = get_api_response(self.api)
                             sleep(2)
 
                             if response_dict and \
@@ -148,7 +148,7 @@ class PokemonCatchWorker(object):
                                     if self.config.evolve_captured:
                                         pokemon_to_transfer = list(Set(id_list2) - Set(id_list1))
                                         self.api.evolve_pokemon(pokemon_id=pokemon_to_transfer[0])
-                                        response_dict = self.api.call()
+                                        response_dict = get_api_response(self.api)
                                         status = response_dict['responses']['EVOLVE_POKEMON']['result']
                                         if status == 1:
                                             logger.log(
@@ -176,7 +176,7 @@ class PokemonCatchWorker(object):
 
     def _transfer_low_cp_pokemon(self, value):
         self.api.get_inventory()
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         self._transfer_all_low_cp_pokemon(value, response_dict)
 
     def _transfer_all_low_cp_pokemon(self, value, response_dict):
@@ -201,15 +201,15 @@ class PokemonCatchWorker(object):
         if 'cp' in pokemon and pokemon['cp'] < value:
 	    sleep(2)
             self.api.release_pokemon(pokemon_id=pokemon['id'])
-            response_dict = self.api.call()
+            response_dict = get_api_response(self.api)
 
     def transfer_pokemon(self, pid):
         self.api.release_pokemon(pokemon_id=pid)
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
 
     def count_pokemon_inventory(self):
         self.api.get_inventory()
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         id_list = []
         return self.counting_pokemon(response_dict, id_list)
 

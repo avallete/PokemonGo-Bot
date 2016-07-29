@@ -4,7 +4,7 @@ import json
 import time
 from math import radians, sqrt, sin, cos, atan2
 from pgoapi.utilities import f2i, h2f
-from utils import print_green, print_yellow, print_red, format_time
+from utils import print_green, print_yellow, print_red, format_time, get_api_response
 from pokemongo_bot.human_behaviour import sleep
 from pokemongo_bot import logger
 
@@ -27,7 +27,7 @@ class SeenFortWorker(object):
         self.api.fort_details(fort_id=self.fort['id'],
                               latitude=lat,
                               longitude=lng)
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
         if 'responses' in response_dict \
                 and'FORT_DETAILS' in response_dict['responses'] \
                 and 'name' in response_dict['responses']['FORT_DETAILS']:
@@ -43,7 +43,7 @@ class SeenFortWorker(object):
                              fort_longitude=lng,
                              player_latitude=f2i(self.position[0]),
                              player_longitude=f2i(self.position[1]))
-        response_dict = self.api.call()
+        response_dict = get_api_response(self.api)
 	sleep(2)
         if 'responses' in response_dict and \
                 'FORT_SEARCH' in response_dict['responses']:
