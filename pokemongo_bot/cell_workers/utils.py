@@ -117,7 +117,7 @@ def get_api_response(api):
     requests_list = api._req_method_list
     while limits > 0:
         req_result = api.call()
-        if 'auth_ticket' in req_result.keys() and 'request_id' in req_result.keys():
+        if req_result and 'auth_ticket' in req_result.keys() and 'request_id' in req_result.keys():
              return req_result
         else:
             logger.log("[X] Error with the api call. Resend request (%s/25)" % limits, 'yellow')
