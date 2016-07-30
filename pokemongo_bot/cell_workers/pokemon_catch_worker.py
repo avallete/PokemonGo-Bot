@@ -112,9 +112,9 @@ class PokemonCatchWorker(object):
                             id_list1 = self.count_pokemon_inventory()
                             self.api.catch_pokemon(encounter_id=encounter_id,
                                                    pokeball=pokeball,
-                                                   normalized_reticle_size=random.uniform(1.9, 2.4),
+                                                   normalized_reticle_size=random.uniform(1.5, 1.9),
                                                    spawn_point_guid=spawnpoint_id,
-                                                   hit_pokemon=ponderated_binary(1, 0, 76),
+                                                   hit_pokemon=ponderated_binary(1, 0, 85),
                                                    spin_modifier=ponderated_binary(1, 0, 60),
                                                    NormalizedHitPosition=1)
                             response_dict = get_api_response(self.api)
