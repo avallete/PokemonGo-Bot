@@ -124,6 +124,6 @@ def get_api_response(api):
             api._req_method_list = requests_list
         limits -= 1
         sleep(5)
-    logguer.log("[X] Failed to get valid response for request 25 times. Fatal Error.", "red")
+    logger.log("[X] Failed to get valid response for request 25 times. Fatal Error.", "red")
     return req_result
 
