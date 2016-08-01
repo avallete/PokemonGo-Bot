@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import time
-import random
-from sets import Set
 from utils import distance, get_api_response
-from pokemongo_bot.human_behaviour import sleep, ponderated_binary
 from pokemongo_bot import logger
+from pokemongo_bot.human_behaviour import (normalized_reticle_size, sleep,
+                                           spin_modifier)
 
 class PokemonCatchWorker(object):
     BAG_FULL = 'bag_full'
@@ -20,249 +19,294 @@ class PokemonCatchWorker(object):
         self.pokemon_list = bot.pokemon_list
         self.item_list = bot.item_list
         self.inventory = bot.inventory
+        self.spawn_point_guid = ''
+        self.response_key = ''
+        self.response_status_key = ''
 
     def work(self):
         encounter_id = self.pokemon['encounter_id']
-        spawnpoint_id = self.pokemon['spawnpoint_id']
-        player_latitude = self.pokemon['latitude']
-        player_longitude = self.pokemon['longitude']
-        self.api.encounter(encounter_id=encounter_id, spawnpoint_id=spawnpoint_id,
-                           player_latitude=player_latitude, player_longitude=player_longitude)
-        response_dict = get_api_response(self.api)
+        response_dict = self.create_encounter_api_call()
 
         if response_dict and 'responses' in response_dict:
-            if 'ENCOUNTER' in response_dict['responses']:
-                if 'status' in response_dict['responses']['ENCOUNTER']:
-                    if response_dict['responses']['ENCOUNTER']['status'] is 7:
-                        if self.config.initial_transfer:
-                            logger.log('Pokemon Bag is full!', 'red')
-                            return PokemonCatchWorker.BAG_FULL
-                        else:
-                            raise RuntimeError('Pokemon Bag is full!')
-
-                    if response_dict['responses']['ENCOUNTER']['status'] is 1:
+            if self.response_key in response_dict['responses']:
+                if self.response_status_key in response_dict['responses'][self.response_key]:
+                    if response_dict['responses'][self.response_key][self.response_status_key] is 1:
                         cp = 0
-                        total_IV = 0
-                        if 'wild_pokemon' in response_dict['responses']['ENCOUNTER']:
-                            pokemon = response_dict['responses']['ENCOUNTER']['wild_pokemon']
-                            catch_rate = response_dict['responses']['ENCOUNTER']['capture_probability']['capture_probability'] # 0 = pokeballs, 1 great balls, 3 ultra balls
+                        if 'wild_pokemon' in response_dict['responses'][self.response_key] or 'pokemon_data' in \
+                                response_dict['responses'][self.response_key]:
+                            if self.response_key == 'ENCOUNTER':
+                                pokemon = response_dict['responses'][self.response_key]['wild_pokemon']
+                            else:
+                                pokemon = response_dict['responses'][self.response_key]
+
+                            catch_rate = response_dict['responses'][self.response_key]['capture_probability'][
+                                'capture_probability']  # 0 = pokeballs, 1 great balls, 3 ultra balls
 
                             if 'pokemon_data' in pokemon and 'cp' in pokemon['pokemon_data']:
-                                cp = pokemon['pokemon_data']['cp']
-                                iv_stats = ['individual_attack', 'individual_defense', 'individual_stamina']
+                                pokemon_data = pokemon['pokemon_data']
+                                cp = pokemon_data['cp']
 
-                                for individual_stat in iv_stats:
-                                    try:
-                                        total_IV += pokemon['pokemon_data'][individual_stat]
-                                    except:
-                                        pokemon['pokemon_data'][individual_stat] = 0
-                                        continue
+                                individual_attack = pokemon_data.get("individual_attack", 0)
+                                individual_stamina = pokemon_data.get("individual_stamina", 0)
+                                individual_defense = pokemon_data.get("individual_defense", 0)
 
-                                pokemon_potential = round((total_IV / 45.0), 2)
-                                pokemon_num = int(pokemon['pokemon_data'][
-                                                  'pokemon_id']) - 1
-                                pokemon_name = self.pokemon_list[
-                                    int(pokemon_num)]['Name']
+                                iv_display = '{}/{}/{}'.format(
+                                    individual_attack,
+                                    individual_defense,
+                                    individual_stamina
+                                )
+
+                                pokemon_potential = self.pokemon_potential(pokemon_data)
+                                pokemon_num = int(pokemon_data['pokemon_id']) - 1
+                                pokemon_name = self.pokemon_list[int(pokemon_num)]['Name']
                                 logger.log('A Wild {} appeared! [CP {}] [Potential {}]'.format(
                                     pokemon_name, cp, pokemon_potential), 'yellow')
 
-                                logger.log('IV [Stamina/Attack/Defense] = [{}/{}/{}]'.format(
-                                    pokemon['pokemon_data']['individual_stamina'],
-                                    pokemon['pokemon_data']['individual_attack'],
-                                    pokemon['pokemon_data']['individual_defense']
-                                ))
-                                pokemon['pokemon_data']['name'] = pokemon_name
+                                logger.log('IV [Attack/Defense/Stamina] = [{}]'.format(iv_display))
+                                pokemon_data['name'] = pokemon_name
                                 # Simulate app
                                 sleep(3)
 
                         if not self.should_capture_pokemon(pokemon_name, cp, pokemon_potential, response_dict):
-                            #logger.log('[x] Rule prevents capture.')
+                            # logger.log('[x] Rule prevents capture.')
                             return False
-                        
-                        balls_stock = self.bot.pokeball_inventory()
-                        while(True):
 
-                            pokeball = 1 # default:poke ball
+                        flag_VIP = False
+                        # @TODO, use the best ball in stock to catch VIP (Very Important Pokemon: Configurable)
+                        if self.check_vip_pokemon(pokemon_name, cp, pokemon_potential):
+                            logger.log('[-] {} is a VIP Pokemon! [CP {}] [Potential {}] Nice! Try our best to catch it!'.format(pokemon_name, cp, pokemon_potential),'red')
+                            flag_VIP=True
 
-                            if balls_stock[1] <= 0: # if poke ball are out of stock
-                                if balls_stock[2] > 0: # and player has great balls in stock...
-                                    pokeball = 2 # then use great balls
-                                elif balls_stock[3] > 0: # or if great balls are out of stock too, and player has ultra balls...
-                                    pokeball = 3 # then use ultra balls
-                            
-                            ## Use berry to increase success chance.
-                            berry_id = 701 # @ TODO: use better berries if possible
-                            berries_count = self.bot.item_inventory_count(berry_id)
-                            if(catch_rate[pokeball-1] < 0.5 and berries_count > 0): # and berry is in stock
-                                success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
-                                logger.log('Catch Rate with normal Pokeball is low ({}%). Throwing {}... ({} left!)'.format(success_percentage,self.item_list[str(berry_id)],berries_count-1))
-                                
-                                if balls_stock[pokeball] is 0:
-                                    break
-                                
-                                self.api.use_item_capture(
-                                    item_id=berry_id, 
-                                    encounter_id = encounter_id, 
-                                    spawn_point_guid = spawnpoint_id
-                                )
-                                response_dict = self.api.call()
-                                if response_dict and response_dict['status_code'] is 1 and 'item_capture_mult' in response_dict['responses']['USE_ITEM_CAPTURE']:
-                                
-                                    for i in range(len(catch_rate)):
-                                        catch_rate[i] = catch_rate[i] * response_dict['responses']['USE_ITEM_CAPTURE']['item_capture_mult']
-                                        
+                        items_stock = self.bot.current_inventory()
+                        berry_id = 701  # @ TODO: use better berries if possible
+                        berries_count = self.bot.item_inventory_count(berry_id)
+                        while True:
+                            # pick the most simple ball from stock
+                            pokeball = 1  # start from 1 - PokeBalls
+                            berry_used = False
+
+                            if flag_VIP:
+                                if(berries_count > 0 and catch_rate[pokeball-1] < 0.9):
                                     success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
-                                    logger.log('Catch Rate with normal Pokeball has increased to {}%'.format(success_percentage))
+                                    logger.log('Catch Rate with normal Pokeball is low ({}%). Thinking to throw a {}... ({} left!)'.format(success_percentage,self.item_list[str(berry_id)],berries_count-1))
+                                    # Out of all pokeballs! Let's don't waste berry.
+                                    if items_stock[1] == 0 and items_stock[2] == 0 and items_stock[3] == 0:
+                                        break
+
+                                    # Use the berry to catch
+                                    self.api.use_item_capture(item_id = berry_id,encounter_id = encounter_id,spawn_point_id = self.spawn_point_guid)
+                                    response_dict = get_api_response(self.api)
+                                    if response_dict and response_dict['status_code'] is 1 and 'item_capture_mult' in response_dict['responses']['USE_ITEM_CAPTURE']:
+                                        for i in range(len(catch_rate)):
+                                            if 'item_capture_mult' in response_dict['responses']['USE_ITEM_CAPTURE']:
+                                                catch_rate[i] = catch_rate[i] * response_dict['responses']['USE_ITEM_CAPTURE']['item_capture_mult']
+                                        success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
+                                        berries_count = berries_count -1
+                                        berry_used = True
+                                        logger.log('Threw a berry! Catch Rate with normal Pokeball has increased to {}%'.format(success_percentage))
+                                    else:
+                                        if response_dict['status_code'] is 1:
+                                            logger.log('Fail to use berry. Seem like you are softbanned.', 'red')
+                                        else:
+                                            logger.log('Fail to use berry. Status Code: {}'.format(response_dict['status_code']),'red')
+
+                                #use the best ball to catch
+                                current_type = pokeball
+                                #debug use normal ball
+                                while current_type < 3:
+                                    current_type += 1
+                                    if catch_rate[pokeball-1] < 0.9 and items_stock[current_type] > 0:
+                                        # if current ball chance to catch is under 90%, and player has better ball - then use it
+                                        pokeball = current_type # use better ball
+                            else:
+                                # If we have a lot of berries (than the great ball), we prefer use a berry first!
+                                if catch_rate[pokeball-1] < 0.42 and items_stock[pokeball+1]+30 < berries_count:
+                                    # If it's not the VIP type, we don't want to waste our ultra ball if no balls left.
+                                    if items_stock[1] == 0 and items_stock[2] == 0:
+                                        break
+
+                                    success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
+                                    logger.log('Catch Rate with normal Pokeball is low ({}%). Thinking to throw a {}... ({} left!)'.format(success_percentage,self.item_list[str(berry_id)],berries_count-1))
+                                    self.api.use_item_capture(item_id = berry_id,encounter_id = encounter_id,spawn_point_id = self.spawn_point_guid)
+                                    response_dict = get_api_response(self.api)
+                                    if response_dict and response_dict['status_code'] is 1 and 'item_capture_mult' in response_dict['responses']['USE_ITEM_CAPTURE']:
+                                        for i in range(len(catch_rate)):
+                                            if 'item_capture_mult' in response_dict['responses']['USE_ITEM_CAPTURE']:
+                                                catch_rate[i] = catch_rate[i] * response_dict['responses']['USE_ITEM_CAPTURE']['item_capture_mult']
+                                        success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
+                                        berries_count = berries_count -1
+                                        berry_used = True
+                                        logger.log('Threw a berry! Catch Rate with normal Pokeball has increased to {}%'.format(success_percentage))
+                                    else:
+                                        if response_dict['status_code'] is 1:
+                                            logger.log('Fail to use berry. Seem like you are softbanned.', 'red')
+                                        else:
+                                            logger.log('Fail to use berry. Status Code: {}'.format(response_dict['status_code']),'red')
+
                                 else:
-                                    logger.log('Fail to use berry. Status Code: {}'.format(response_dict['status_code']),'red')
+                                    #We don't have many berry to waste, pick a good ball first. Save some berry for future VIP pokemon
+                                    current_type = pokeball
+                                    while current_type < 2:
+                                        current_type += 1
+                                        if catch_rate[pokeball-1] < 0.35 and items_stock[current_type] > 0:
+                                            # if current ball chance to catch is under 35%, and player has better ball - then use it
+                                            pokeball = current_type # use better ball
 
-                            while(pokeball < 3):
-                                if catch_rate[pokeball-1] < 0.35 and balls_stock[pokeball+1] > 0:
-                                    # if current ball chance to catch is under 35%, and player has better ball - then use it
-                                    pokeball = pokeball+1 # use better ball
-                                else:
-                                    break
+                                #if the rate is still low and we didn't throw a berry before use berry
+                                if catch_rate[pokeball-1] < 0.35 and berries_count > 0 and berry_used == False:
+                                    # If it's not the VIP type, we don't want to waste our ultra ball if no balls left.
+                                    if items_stock[1] == 0 and items_stock[2] == 0:
+                                        break
 
-                            # @TODO, use the best ball in stock to catch VIP (Very Important Pokemon: Configurable)
-                            
-                            if balls_stock[pokeball] is 0:
-                                logger.log(
-                                    'Out of pokeballs, switching to farming mode...', 'red')
-                                # Begin searching for pokestops.
-                                self.config.mode = 'farm'
-                                return PokemonCatchWorker.NO_POKEBALLS
+                                    success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
+                                    logger.log('Catch Rate with normal Pokeball is low ({}%). Thinking to throw a {}... ({} left!)'.format(success_percentage,self.item_list[str(berry_id)],berries_count-1))
+                                    self.api.use_item_capture(item_id = berry_id,encounter_id = encounter_id,spawn_point_id = self.spawn_point_guid)
+                                    response_dict = get_api_response(self.api)
+                                    if response_dict and response_dict['status_code'] is 1 and 'item_capture_mult' in response_dict['responses']['USE_ITEM_CAPTURE']:
+                                        for i in range(len(catch_rate)):
+                                            if 'item_capture_mult' in response_dict['responses']['USE_ITEM_CAPTURE']:
+                                                catch_rate[i] = catch_rate[i] * response_dict['responses']['USE_ITEM_CAPTURE']['item_capture_mult']
+                                        success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
+                                        berries_count = berries_count -1
+                                        berry_used = True
+                                        logger.log('Threw a berry! Catch Rate with normal Pokeball has increased to {}%'.format(success_percentage))
+                                    else:
+                                        if response_dict['status_code'] is 1:
+                                            logger.log('Fail to use berry. Seem like you are softbanned.', 'red')
+                                        else:
+                                            logger.log('Fail to use berry. Status Code: {}'.format(response_dict['status_code']),'red')
 
-                            balls_stock[pokeball] = balls_stock[pokeball] - 1
-                            success_percentage = '{0:.2f}'.format(catch_rate[pokeball-1]*100)
+                                # Re-check if berry is used, find a ball for a good capture rate
+                                current_type=pokeball
+                                while current_type < 2:
+                                    current_type += 1
+                                    if catch_rate[pokeball-1] < 0.35 and items_stock[current_type] > 0:
+                                        pokeball = current_type # use better ball
+
+                                # This is to avoid rare case that a berry has ben throwed <0.42
+                                # and still picking normal pokeball (out of stock) -> error
+                                if items_stock[1] == 0 and items_stock[2] > 0:
+                                    pokeball = 2
+
+                                # Add this logic to avoid Pokeball = 0, Great Ball = 0, Ultra Ball = X
+                                # And this logic saves Ultra Balls if it's a weak trash pokemon
+                                if catch_rate[pokeball-1]<0.30 and items_stock[3]>0:
+                                    pokeball = 3
+
+                            items_stock[pokeball] -= 1
+                            success_percentage = '{0:.2f}'.format(catch_rate[pokeball - 1] * 100)
                             logger.log('Using {} (chance: {}%)... ({} left!)'.format(
-                                self.item_list[str(pokeball)], 
-                                success_percentage, 
-                                balls_stock[pokeball]
+                                self.item_list[str(pokeball)],
+                                success_percentage,
+                                items_stock[pokeball]
                             ))
 
                             id_list1 = self.count_pokemon_inventory()
+
+                            reticle_size_parameter = normalized_reticle_size(self.config.catch_randomize_reticle_factor)
+                            spin_modifier_parameter = spin_modifier(self.config.catch_randomize_spin_factor)
+
                             self.api.catch_pokemon(encounter_id=encounter_id,
                                                    pokeball=pokeball,
-                                                   normalized_reticle_size=random.uniform(1.5, 1.9),
-                                                   spawn_point_guid=spawnpoint_id,
-                                                   hit_pokemon=ponderated_binary(1, 0, 85),
-                                                   spin_modifier=ponderated_binary(1, 0, 60),
-                                                   NormalizedHitPosition=1)
+                                                   normalized_reticle_size=reticle_size_parameter,
+                                                   spawn_point_id=self.spawn_point_guid,
+                                                   hit_pokemon=1,
+                                                   spin_modifier=spin_modifier_parameter,
+                                                   normalized_hit_position=1)
                             response_dict = get_api_response(self.api)
-                            sleep(2)
 
                             if response_dict and \
-                                'responses' in response_dict and \
-                                'CATCH_POKEMON' in response_dict['responses'] and \
-                                    'status' in response_dict['responses']['CATCH_POKEMON']:
+                                            'responses' in response_dict and \
+                                            'CATCH_POKEMON' in response_dict['responses'] and \
+                                            'status' in response_dict['responses']['CATCH_POKEMON']:
                                 status = response_dict['responses'][
                                     'CATCH_POKEMON']['status']
                                 if status is 2:
                                     logger.log(
-                                        '[-] Attempted to capture {} - failed.. trying again!'.format(pokemon_name), 'red')
+                                        '[-] Attempted to capture {} - failed.. trying again!'.format(pokemon_name),
+                                        'red')
                                     sleep(2)
                                     continue
                                 if status is 3:
                                     logger.log(
                                         'Oh no! {} vanished! :('.format(pokemon_name), 'red')
+                                    if success_percentage == 100:
+                                        self.softban = True
                                 if status is 1:
-                                    
-                                    id_list2 = self.count_pokemon_inventory()
-                                    
-                                    logger.log('Captured {}! [CP {}] [{}/{}/{}]'.format(
-                                        pokemon_name, 
+                                    self.bot.metrics.captured_pokemon(pokemon_name, cp, iv_display, pokemon_potential)
+
+                                    logger.log('Captured {}! [CP {}] [Potential {}] [{}] [+{} exp]'.format(
+                                        pokemon_name,
                                         cp,
-                                        pokemon['pokemon_data']['individual_stamina'],
-                                        pokemon['pokemon_data']['individual_attack'],
-                                        pokemon['pokemon_data']['individual_defense']
+                                        pokemon_potential,
+                                        iv_display,
+                                        sum(response_dict['responses']['CATCH_POKEMON']['capture_award']['xp'])
                                     ), 'blue')
-                                        
-                                    if self.config.evolve_captured:
-                                        pokemon_to_transfer = list(Set(id_list2) - Set(id_list1))
+                                    self.bot.softban = False
+
+                                    if (self.config.evolve_captured
+                                        and (self.config.evolve_captured[0] == 'all'
+                                             or pokemon_name in self.config.evolve_captured)):
+                                        id_list2 = self.count_pokemon_inventory()
+                                        # No need to capture this even for metrics, player stats includes it.
+                                        pokemon_to_transfer = list(set(id_list2) - set(id_list1))
+
+                                        # TODO dont throw RuntimeError, do something better
+                                        if len(pokemon_to_transfer) == 0:
+                                            raise RuntimeError(
+                                                'Trying to evolve 0 pokemons!')
                                         self.api.evolve_pokemon(pokemon_id=pokemon_to_transfer[0])
                                         response_dict = get_api_response(self.api)
                                         status = response_dict['responses']['EVOLVE_POKEMON']['result']
                                         if status == 1:
                                             logger.log(
-                                                    '{} has been evolved!'.format(pokemon_name), 'green')
+                                                '{} has been evolved!'.format(pokemon_name), 'green')
                                         else:
                                             logger.log(
-                                            'Failed to evolve {}!'.format(pokemon_name))
-
-                                    if self.should_release_pokemon(pokemon_name, cp, pokemon_potential, response_dict):
-                                        # Transfering Pokemon
-                                        pokemon_to_transfer = list(
-                                            Set(id_list2) - Set(id_list1))
-                                        if len(pokemon_to_transfer) == 0:
-                                            raise RuntimeError(
-                                                'Trying to transfer 0 pokemons!')
-                                        self.transfer_pokemon(
-                                            pokemon_to_transfer[0])
-                                        logger.log(
-                                            '{} has been exchanged for candy!'.format(pokemon_name), 'green')
-
+                                                'Failed to evolve {}!'.format(pokemon_name))
                             break
-        sleep(7)
-
-    def _transfer_low_cp_pokemon(self, value):
-        self.api.get_inventory()
-        response_dict = get_api_response(self.api)
-        self._transfer_all_low_cp_pokemon(value, response_dict)
-
-    def _transfer_all_low_cp_pokemon(self, value, response_dict):
-        try:
-            reduce(dict.__getitem__, [
-                   "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
-        except KeyError:
-            pass
-        else:
-            for item in response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
-                try:
-                    reduce(dict.__getitem__, [
-                           "inventory_item_data", "pokemon"], item)
-                except KeyError:
-                    pass
-                else:
-                    pokemon = item['inventory_item_data']['pokemon']
-                    self._execute_pokemon_transfer(value, pokemon)
-                    time.sleep(1.2)
-
-    def _execute_pokemon_transfer(self, value, pokemon):
-        if 'cp' in pokemon and pokemon['cp'] < value:
-	    sleep(2)
-            self.api.release_pokemon(pokemon_id=pokemon['id'])
-            response_dict = get_api_response(self.api)
-
-    def transfer_pokemon(self, pid):
-        self.api.release_pokemon(pokemon_id=pid)
-        response_dict = get_api_response(self.api)
+        time.sleep(7)
 
     def count_pokemon_inventory(self):
+        # don't use cached bot.get_inventory() here
+        # because we need to have actual information in capture logic
         self.api.get_inventory()
         response_dict = get_api_response(self.api)
         id_list = []
-        return self.counting_pokemon(response_dict, id_list)
+        callback = lambda pokemon: id_list.append(pokemon['id'])
+        self._foreach_pokemon_in_inventory(response_dict, callback)
+        return id_list
 
-    def counting_pokemon(self, response_dict, id_list):
+    def _foreach_pokemon_in_inventory(self, response_dict, callback):
         try:
             reduce(dict.__getitem__, [
-                   "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
+                "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
         except KeyError:
             pass
         else:
             for item in response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
                 try:
                     reduce(dict.__getitem__, [
-                           "inventory_item_data", "pokemon_data"], item)
+                        "inventory_item_data", "pokemon_data"], item)
                 except KeyError:
                     pass
                 else:
                     pokemon = item['inventory_item_data']['pokemon_data']
-                    if pokemon.get('is_egg', False):
-                        continue
-                    id_list.append(pokemon['id'])
+                    if not pokemon.get('is_egg', False):
+                        callback(pokemon)
 
-        return id_list
+    def pokemon_potential(self, pokemon_data):
+        total_iv = 0
+        iv_stats = ['individual_attack', 'individual_defense', 'individual_stamina']
+
+        for individual_stat in iv_stats:
+            try:
+                total_iv += pokemon_data[individual_stat]
+            except:
+                pokemon_data[individual_stat] = 0
+                continue
+
+        return round((total_iv / 45.0), 2)
 
     def should_capture_pokemon(self, pokemon_name, cp, iv, response_dict):
         catch_config = self._get_catch_config_for(pokemon_name)
@@ -274,7 +318,7 @@ class PokemonCatchWorker(object):
             'cp': False,
             'iv': False,
         }
-        
+
         if catch_config.get('never_catch', False):
             return False
 
@@ -294,66 +338,69 @@ class PokemonCatchWorker(object):
             'and': lambda x, y: x and y
         }
 
-        #logger.log(
+        # logger.log(
         #    "Catch config for {}: CP {} {} IV {}".format(
         #        pokemon_name,
         #        catch_cp,
         #        cp_iv_logic,
         #        catch_iv
         #    ), 'yellow'
-        #)
+        # )
 
         return logic_to_function[cp_iv_logic](*catch_results.values())
 
     def _get_catch_config_for(self, pokemon):
         catch_config = self.config.catch.get(pokemon)
         if not catch_config:
-            catch_config = self.config.catch['any']
+            catch_config = self.config.catch.get('any')
         return catch_config
 
-    def should_release_pokemon(self, pokemon_name, cp, iv, response_dict):
-        release_config = self._get_release_config_for(pokemon_name)
-        cp_iv_logic = release_config.get('logic')
-        if not cp_iv_logic:
-            cp_iv_logic = self._get_release_config_for('any').get('logic', 'and')
+    def create_encounter_api_call(self):
+        encounter_id = self.pokemon['encounter_id']
+        player_latitude = self.pokemon['latitude']
+        player_longitude = self.pokemon['longitude']
 
-        release_results = {
+        if 'spawn_point_id' in self.pokemon:
+            spawn_point_id = self.pokemon['spawn_point_id']
+            self.spawn_point_guid = spawn_point_id
+            self.response_key = 'ENCOUNTER'
+            self.response_status_key = 'status'
+            self.api.encounter(encounter_id=encounter_id, spawn_point_id=spawn_point_id,
+                               player_latitude=player_latitude, player_longitude=player_longitude)
+        else:
+            fort_id = self.pokemon['fort_id']
+            self.spawn_point_guid = fort_id
+            self.response_key = 'DISK_ENCOUNTER'
+            self.response_status_key = 'result'
+            self.api.disk_encounter(encounter_id=encounter_id, fort_id=fort_id,
+                                    player_latitude=player_latitude, player_longitude=player_longitude)
+
+        return get_api_response(self.api)
+
+    def check_vip_pokemon(self,pokemon, cp, iv):
+
+        vip_name = self.config.vips.get(pokemon)
+        if vip_name == {}:
+            return True
+        else:
+            catch_config = self.config.vips.get("any")
+            if not catch_config:
+                return False
+            cp_iv_logic = catch_config.get('logic', 'or')
+        catch_results = {
             'cp': False,
             'iv': False,
         }
-        
-        if release_config.get('never_release', False):
-            return False
 
-        if release_config.get('always_release', False):
-            return True
-
-        release_cp = release_config.get('release_below_cp', 0)
-        if cp < release_cp:
-            release_results['cp'] = True
-
-        release_iv = release_config.get('release_below_iv', 0)
-        if iv < release_iv:
-            release_results['iv'] = True
-
+        catch_cp = catch_config.get('catch_above_cp', 0)
+        if cp > catch_cp:
+            catch_results['cp'] = True
+        catch_iv = catch_config.get('catch_above_iv', 0)
+        if iv > catch_iv:
+            catch_results['iv'] = True
         logic_to_function = {
             'or': lambda x, y: x or y,
             'and': lambda x, y: x and y
         }
+        return logic_to_function[cp_iv_logic](*catch_results.values())
 
-        #logger.log(
-        #    "Release config for {}: CP {} {} IV {}".format(
-        #        pokemon_name,
-        #        min_cp,
-        #        cp_iv_logic,
-        #        min_iv
-        #    ), 'yellow'
-        #)
-
-        return logic_to_function[cp_iv_logic](*release_results.values())
-
-    def _get_release_config_for(self, pokemon):
-        release_config = self.config.release.get(pokemon)
-        if not release_config:
-            release_config = self.config.release['any']
-        return release_config

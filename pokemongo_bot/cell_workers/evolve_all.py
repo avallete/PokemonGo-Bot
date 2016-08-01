@@ -1,64 +1,103 @@
 from utils import distance, format_dist, get_api_response
-from pokemongo_bot.human_behaviour import sleep
 from pokemongo_bot import logger
-from sets import Set
+from pokemongo_bot.human_behaviour import sleep
+from pokemongo_bot.item_list import Item
+from pokemongo_bot.cell_workers.base_task import BaseTask
 
-class EvolveAllWorker(object):
-    def __init__(self, bot):
-        self.api = bot.api
-        self.config = bot.config
-        self.bot = bot
-        # self.position = bot.position
+class EvolveAll(BaseTask):
+    def initialize(self):
+        self.evolve_all = self.config.get('evolve_all', [])
+        self.evolve_speed = self.config.get('evolve_speed', 3.7)
+        self.evolve_cp_min = self.config.get('evolve_cp_min', 300)
+        self.use_lucky_egg = self.config.get('use_lucky_egg', False)
+
+    def _validate_config(self):
+        if isinstance(self.evolve_all, str):
+            self.evolve_all = [str(pokemon_name) for pokemon_name in self.evolve_all.split(',')]
 
     def work(self):
-        self.api.get_inventory()
-        response_dict = get_api_response(self.api)
+        if not self._should_run():
+            return
+
+        response_dict = self.bot.get_inventory()
         cache = {}
 
         try:
             reduce(dict.__getitem__, [
-                   "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
+                "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
         except KeyError:
             pass
         else:
-            evolve_list = self._sort_by_cp(response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
-            if self.config.evolve_all[0] != 'all':
+            evolve_list = self._sort_by_cp_iv(
+                response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
+            if self.evolve_all[0] != 'all':
                 # filter out non-listed pokemons
-                evolve_list = [x for x in evolve_list if str(x[1]) in self.config.evolve_all]
-            
-            ## enable to limit number of pokemons to evolve. Useful for testing.
-            # nn = 1
+                evolve_list = [x for x in evolve_list if str(x[1]) in self.evolve_all]
+
+            # enable to limit number of pokemons to evolve. Useful for testing.
+            # nn = 3
             # if len(evolve_list) > nn:
             #     evolve_list = evolve_list[:nn]
-            ##
+            #
 
             id_list1 = self.count_pokemon_inventory()
             for pokemon in evolve_list:
                 try:
                     self._execute_pokemon_evolve(pokemon, cache)
-                except:
+                except Exception:
                     pass
             id_list2 = self.count_pokemon_inventory()
-            release_cand_list_ids = list(Set(id_list2) - Set(id_list1))
+            release_cand_list_ids = list(set(id_list2) - set(id_list1))
 
             if release_cand_list_ids:
-                print('[#] Evolved {} pokemons! Checking if any of them needs to be released ...'.format(
+                logger.log('[#] Evolved {} pokemons! Checking if any of them needs to be released ...'.format(
                     len(release_cand_list_ids)
                 ))
                 self._release_evolved(release_cand_list_ids)
 
+    def _should_run(self):
+        # Will skip evolving if user wants to use an egg and there is none
+        if not self.evolve_all:
+            return False
+
+        # Evolve all is used - Don't run after the first tick or if the config flag is false
+        if self.bot.tick_count is not 1 or not self.use_lucky_egg:
+            return True
+
+        lucky_egg_count = self.bot.item_inventory_count(Item.ITEM_LUCKY_EGG.value)
+
+        # Lucky Egg should only be popped at the first tick
+        # Make sure the user has a lucky egg and skip if not
+        if lucky_egg_count > 0:
+            logger.log('Using lucky egg ... you have {}'.format(lucky_egg_count))
+            response_dict_lucky_egg = self.bot.use_lucky_egg()
+            if response_dict_lucky_egg and 'responses' in response_dict_lucky_egg and \
+                            'USE_ITEM_XP_BOOST' in response_dict_lucky_egg['responses'] and \
+                            'result' in response_dict_lucky_egg['responses']['USE_ITEM_XP_BOOST']:
+                result = response_dict_lucky_egg['responses']['USE_ITEM_XP_BOOST']['result']
+                if result is 1:  # Request success
+                    logger.log('Successfully used lucky egg... ({} left!)'.format(lucky_egg_count - 1), 'green')
+                    return True
+                else:
+                    logger.log('Failed to use lucky egg!', 'red')
+                    return False
+        else:
+            # Skipping evolve so they aren't wasted
+            logger.log('No lucky eggs... skipping evolve!', 'yellow')
+            return False
+
     def _release_evolved(self, release_cand_list_ids):
-        self.api.get_inventory()
-        response_dict = get_api_response(self.api)
+        response_dict = self.bot.get_inventory()
         cache = {}
 
         try:
             reduce(dict.__getitem__, [
-                   "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
+                "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
         except KeyError:
             pass
         else:
-            release_cand_list = self._sort_by_cp(response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
+            release_cand_list = self._sort_by_cp_iv(
+                response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items'])
             release_cand_list = [x for x in release_cand_list if x[0] in release_cand_list_ids]
 
             ## at this point release_cand_list contains evolved pokemons data
@@ -72,14 +111,15 @@ class EvolveAllWorker(object):
                     # Transfering Pokemon
                     self.transfer_pokemon(pokemon_id)
                     logger.log(
-                        '[#] {} has been exchanged for candy!'.format(pokemon_name), 'green')
+                        '[#] {} has been exchanged for candy!'.format(pokemon_name), 'red')
 
-    def _sort_by_cp(self, inventory_items):
-        pokemons = []
+    def _sort_by_cp_iv(self, inventory_items):
+        pokemons1 = []
+        pokemons2 = []
         for item in inventory_items:
             try:
                 reduce(dict.__getitem__, [
-                       "inventory_item_data", "pokemon_data"], item)
+                    "inventory_item_data", "pokemon_data"], item)
             except KeyError:
                 pass
             else:
@@ -87,61 +127,72 @@ class EvolveAllWorker(object):
                     pokemon = item['inventory_item_data']['pokemon_data']
                     pokemon_num = int(pokemon['pokemon_id']) - 1
                     pokemon_name = self.bot.pokemon_list[int(pokemon_num)]['Name']
-                    pokemons.append([
+                    v = [
                         pokemon['id'],
                         pokemon_name,
                         pokemon['cp'],
                         self._compute_iv(pokemon)
-                        ])
-                except:
+                    ]
+                    if pokemon['cp'] > self.evolve_cp_min:
+                        pokemons1.append(v)
+                    else:
+                        pokemons2.append(v)
+                except Exception:
                     pass
 
-        pokemons.sort(key=lambda x: x[2], reverse=True)
-        return pokemons
+        # Sort larger CP pokemons by IV, tie breaking by CP
+        pokemons1.sort(key=lambda x: (x[3], x[2]), reverse=True)
+
+        # Sort smaller CP pokemons by CP, tie breaking by IV
+        pokemons2.sort(key=lambda x: (x[2], x[3]), reverse=True)
+
+        return pokemons1 + pokemons2
 
     def _execute_pokemon_evolve(self, pokemon, cache):
         pokemon_id = pokemon[0]
         pokemon_name = pokemon[1]
         pokemon_cp = pokemon[2]
+        pokemon_iv = pokemon[3]
 
         if pokemon_name in cache:
             return
 
-        self.api.evolve_pokemon(pokemon_id=pokemon_id)
-        response_dict = get_api_response(self.api)
+        self.bot.api.evolve_pokemon(pokemon_id=pokemon_id)
+        response_dict = get_api_response(self.bot.api)
         status = response_dict['responses']['EVOLVE_POKEMON']['result']
         if status == 1:
-            print('[#] Successfully evolved {} with {} cp!'.format(
-                pokemon_name, pokemon_cp
+            logger.log('[#] Successfully evolved {} with {} CP and {} IV!'.format(
+                pokemon_name, pokemon_cp, pokemon_iv
             ))
+
+            sleep(self.evolve_speed)
+
         else:
             # cache pokemons we can't evolve. Less server calls
             cache[pokemon_name] = 1
-            print("[x] Can't evolve pokemon %s. Sorry :(" % pokemon_name)
-        sleep(35)
+            sleep(0.7)
 
     # TODO: move to utils. These methods are shared with other workers.
     def transfer_pokemon(self, pid):
-        self.api.release_pokemon(pokemon_id=pid)
-        response_dict = get_api_response(self.api)
+        self.bot.api.release_pokemon(pokemon_id=pid)
+        response_dict = get_api_response(self.bot.api)
 
     def count_pokemon_inventory(self):
-        self.api.get_inventory()
-        response_dict = get_api_response(self.api)
+        response_dict = self.bot.get_inventory()
         id_list = []
         return self.counting_pokemon(response_dict, id_list)
 
     def counting_pokemon(self, response_dict, id_list):
         try:
             reduce(dict.__getitem__, [
-                   "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
+                "responses", "GET_INVENTORY", "inventory_delta", "inventory_items"], response_dict)
         except KeyError:
             pass
         else:
             for item in response_dict['responses']['GET_INVENTORY']['inventory_delta']['inventory_items']:
                 try:
                     reduce(dict.__getitem__, [
-                           "inventory_item_data", "pokemon_data"], item)
+                        "inventory_item_data", "pokemon_data"], item)
                 except KeyError:
                     pass
                 else:
@@ -157,22 +208,22 @@ class EvolveAllWorker(object):
             return False
         else:
             release_config = self._get_release_config_for(pokemon_name)
-            cp_iv_logic = release_config.get('cp_iv_logic')
+            cp_iv_logic = release_config.get('logic')
             if not cp_iv_logic:
-                cp_iv_logic = self._get_release_config_for('any').get('cp_iv_logic', 'and')
+                cp_iv_logic = self._get_release_config_for('any').get('logic', 'and')
 
             release_results = {
-                'cp':               False,
-                'iv':               False,
+                'cp': False,
+                'iv': False,
             }
 
-            if 'release_under_cp' in release_config:
-                min_cp = release_config['release_under_cp']
+            if 'release_below_cp' in release_config:
+                min_cp = release_config['release_below_cp']
                 if cp < min_cp:
                     release_results['cp'] = True
 
-            if 'release_under_iv' in release_config:
-                min_iv = release_config['release_under_iv']
+            if 'release_below_iv' in release_config:
+                min_iv = release_config['release_below_iv']
                 if iv < min_iv:
                     release_results['iv'] = True
 
@@ -184,25 +235,25 @@ class EvolveAllWorker(object):
                 'and': lambda x, y: x and y
             }
 
-            #logger.log(
+            # logger.log(
             #    "[x] Release config for {}: CP {} {} IV {}".format(
             #        pokemon_name,
             #        min_cp,
             #        cp_iv_logic,
             #        min_iv
             #    ), 'yellow'
-            #)
+            # )
 
             return logic_to_function[cp_iv_logic](*release_results.values())
 
     def _get_release_config_for(self, pokemon):
-        release_config = self.config.release_config.get(pokemon)
+        release_config = self.bot.config.release.get(pokemon)
         if not release_config:
-            release_config = self.config.release_config['any']
+            release_config = self.bot.config.release['any']
         return release_config
 
     def _get_exceptions(self):
-        exceptions = self.config.release_config.get('exceptions')
+        exceptions = self.bot.config.release.get('exceptions')
         if not exceptions:
             return None
         return exceptions
@@ -230,11 +281,11 @@ class EvolveAllWorker(object):
     def _compute_iv(self, pokemon):
         total_IV = 0.0
         iv_stats = ['individual_attack', 'individual_defense', 'individual_stamina']
-        
+
         for individual_stat in iv_stats:
             try:
                 total_IV += pokemon[individual_stat]
-            except:
+            except Exception:
                 pokemon[individual_stat] = 0
                 continue
         pokemon_potential = round((total_IV / 45.0), 2)

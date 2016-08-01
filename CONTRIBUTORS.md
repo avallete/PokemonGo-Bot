@@ -31,3 +31,18 @@
  * th3w4y
  * Leaklessgfy
  * steffwiz
+ * pulgalipe
+ * BartKoppelmans
+ * phil9l
+ * VictorChen
+ * AlvaroGzP
+ * fierysolid
+ * surfaace
+ * surceis
+ * SpaceWhale
+ * klingan
+ * reddivision
+ * DayBr3ak
+ * kbinani
+ * MFizz
+ * NamPNQ
