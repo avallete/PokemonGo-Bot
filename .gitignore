@@ -121,3 +121,9 @@ configs/*
 !configs/release_config.json.example
 !config.json.example
 !release_config.json.example
+
+#Git merge remains
+*.orig
+
+#Vim tmp files
+*.swp

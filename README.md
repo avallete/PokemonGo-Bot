@@ -42,22 +42,8 @@ Bitcoin Address:  1PJMCx9NNQRasQYaa4MMff9yyNFffhHgLu
 </p>
 
 
-<<<<<<< HEAD
-## Project Chat
-We use [Slack](https://slack.com) as a web chat. [Click here to join the chat!](https://pokemongo-bot.herokuapp.com)
-## Breaking Changes
-You need modify config.json (config.json.example for example) then pokecli.py --config config.json 
-Please clean up your old clone if you have issue, and following the [install instruction](https://github.com/PokemonGoF/PokemonGo-Bot#installation).
-
-## About dev/master Branch
-Dev branch has the most up-to-date features, but be aware that there might be some broken changes. Your contribution and PR for fixes are warm welcome. 
-Master branch is the stable branch.  
-No PR on master branch to keep things easier.  
-=======
-
 ## OLD README BELOW. STILL UPDATING THIS.
 
->>>>>>> origin/dev
 ## Table of Contents
 - __Installation__
   - [Requirements](#requirements)
@@ -71,36 +57,6 @@ No PR on master branch to keep things easier.
 - [Credits](#credits)
 - [Donation](#donation)
 
-<<<<<<< HEAD
-## Features
- * Search Fort (Spin Pokestop)
- * Catch Pokemon
- * Release low cp pokemon
- * Walking as you
- * Limit the step to farm specific area for pokestops
- * Use the ball you have to catch, don't if you don't have
- * Rudimentary IV Functionality filter
- * Auto switch mode (Full of item then catch, no ball useable then farm)
- * Ignore certain pokemon filter
- * Use superior ball types when necessary
- * When out of normal pokeballs, use the next type of ball unless there are less than 10 of that type, in which case switch to farm mode
- * Drop items when bag is full (In Testing, Document contribute needed)
- * Pokemon catch filter (In Testing, Document contribute needed)
- * Google Map API key setup (Readme update needed)
- * Show all objects on map (In Testing)
- * Evolve pokemons (Code in, Need input, In Testing)
-
-## TODO List
-
-- [ ] Standalone Desktop APP
-- [ ] Pokemon transfer filter ?? This already done, right?
-- [ ] Hatch eggs
-- [ ] Incubate eggs
-- [ ] Use candy
-- [ ] Fight Gym
-
-=======
->>>>>>> origin/dev
 ## Installation
 
 ### Requirements (click each one for install guide)
@@ -213,13 +169,8 @@ Please keep in mind that this fix is only necessary if your python version don't
 To update your project do: `git pull` in the project folder
 
 ## Usage (up-to-date)
-<<<<<<< HEAD
-	1/ copy `config.json.example` to `config.json` and `release_config.json.example` to `release_config.json`.
-	2/ Edit `config.json` and replace `auth_service`, `username`, `password`, `location` and `gmapkey` with your parameters (other keys are optional, check `Advance Configuration` below)
-=======
   1/ copy `config.json.example` to `config.json` and `release_config.json.example` to `release_config.json`.
   2/ Edit `config.json` and replace `auth_service`, `username`, `password`, `location` and `gmapkey` with your parameters (other keys are optional, check `Advance Configuration` below)
->>>>>>> origin/dev
 
 ## Advance Configuration
 - `max_steps` :
@@ -232,8 +183,6 @@ To update your project do: `git pull` in the project folder
 - `distance_unit` :
 - `item_filter` :
 - `evolve_all` : Set to true to evolve pokemons if possible
-<<<<<<< HEAD
-=======
 
 ## Catch Configuration
 Default configuration will capture all Pokemon.
@@ -254,7 +203,6 @@ to only release Pidgey with bad rolls.
 Additionally, you can specify always_release and never_release flags. For example:
 ```"Pidgey": {"always_release": true}```
 will release all Pidgey caught.
->>>>>>> origin/dev
 
 ### Evolve All Configuration
     By setting the `evolve_all` attribute in config.json, you can instruct the bot to automatically
