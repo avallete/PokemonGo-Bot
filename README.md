@@ -1,16 +1,48 @@
-<p align="center">
-  <a href="">
-    <img alt="Logo" src="https://www.brooklinelibrary.org/wp-content/uploads/2016/07/2000px-Pok%C3%A9_Ball.svg_-1.png" width="100">
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://pokemongo-bot.herokuapp.com/"><img alt="Slack" src="https://pokemongo-bot.herokuapp.com/badge.svg"></a>
-</p>
-
 # PokemonGo-Bot
-The Pokemon Go Bot, baking with community.
+PokemonGo bot is a project created by the [PokemonGoF](https://github.com/PokemonGoF) team.
+The project is currently setup in two different branches. `dev` and `master`.
 
+We use [Slack](https://slack.com) as a web chat. [Click here to join the chat!](https://pokemongo-bot.herokuapp.com)
+
+## Features
+- [x] GPS Location configuration
+- [x] Search Pokestops
+- [x] Catch Pokemon
+- [x] Determine which pokeball to use (uses Razz Berry if the catch percentage is low!)
+- [x] Exchange Pokemon as per configuration
+- [x] Evolve Pokemon as per configuration
+- [x] Auto switch mode (Inventory Checks - switches between catch/farming items)
+- [x] Limit the step to farm specific area for pokestops
+- [x] Rudimentary IV Functionality filter
+- [x] Ignore certain pokemon filter
+- [ ] Standalone Desktop Application
+- [ ] Hatch eggs
+- [ ] Incubate eggs
+- [ ] Use candy
+- [ ] Fight Gym
+
+## Wiki
+All information on [Getting Started](https://github.com/PokemonGoF/PokemonGo-Bot/wiki/Getting-Started) is available in the [Wiki](https://github.com/PokemonGoF/PokemonGo-Bot/wiki/)!
+To ensure that all updates are documented - [@eggins](https://github.com/eggins) will keep the Wiki updated with the latest information on installing, updating and configuring the bot.
+
+## Credits
+- [tejado](https://github.com/tejado) many thanks for the API
+- [Mila432](https://github.com/Mila432/Pokemon_Go_API) for the login secrets
+- [elliottcarlson](https://github.com/elliottcarlson) for the Google Auth PR
+- [AeonLucid](https://github.com/AeonLucid/POGOProtos) for improved protos
+- [AHAAAAAAA](https://github.com/AHAAAAAAA/PokemonGo-Map) for parts of the s2sphere stuff
+
+
+## Donation
+
+Bitcoin Address:  1PJMCx9NNQRasQYaa4MMff9yyNFffhHgLu
+
+<p align="center">
+<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=WQUXDC54W6EVY"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"></a>
+</p>
+
+
+<<<<<<< HEAD
 ## Project Chat
 We use [Slack](https://slack.com) as a web chat. [Click here to join the chat!](https://pokemongo-bot.herokuapp.com)
 ## Breaking Changes
@@ -21,10 +53,12 @@ Please clean up your old clone if you have issue, and following the [install ins
 Dev branch has the most up-to-date features, but be aware that there might be some broken changes. Your contribution and PR for fixes are warm welcome. 
 Master branch is the stable branch.  
 No PR on master branch to keep things easier.  
+=======
+
+## OLD README BELOW. STILL UPDATING THIS.
+
+>>>>>>> origin/dev
 ## Table of Contents
-- [Project Chat](#project-chat)
-- [Features](#features)
-- [TODO List](#todo-list)
 - __Installation__
   - [Requirements](#requirements)
   - [Mac](#installation-mac)
@@ -37,6 +71,7 @@ No PR on master branch to keep things easier.
 - [Credits](#credits)
 - [Donation](#donation)
 
+<<<<<<< HEAD
 ## Features
  * Search Fort (Spin Pokestop)
  * Catch Pokemon
@@ -64,6 +99,8 @@ No PR on master branch to keep things easier.
 - [ ] Use candy
 - [ ] Fight Gym
 
+=======
+>>>>>>> origin/dev
 ## Installation
 
 ### Requirements (click each one for install guide)
@@ -176,8 +213,13 @@ Please keep in mind that this fix is only necessary if your python version don't
 To update your project do: `git pull` in the project folder
 
 ## Usage (up-to-date)
+<<<<<<< HEAD
 	1/ copy `config.json.example` to `config.json` and `release_config.json.example` to `release_config.json`.
 	2/ Edit `config.json` and replace `auth_service`, `username`, `password`, `location` and `gmapkey` with your parameters (other keys are optional, check `Advance Configuration` below)
+=======
+  1/ copy `config.json.example` to `config.json` and `release_config.json.example` to `release_config.json`.
+  2/ Edit `config.json` and replace `auth_service`, `username`, `password`, `location` and `gmapkey` with your parameters (other keys are optional, check `Advance Configuration` below)
+>>>>>>> origin/dev
 
 ## Advance Configuration
 - `max_steps` :
@@ -190,6 +232,29 @@ To update your project do: `git pull` in the project folder
 - `distance_unit` :
 - `item_filter` :
 - `evolve_all` : Set to true to evolve pokemons if possible
+<<<<<<< HEAD
+=======
+
+## Catch Configuration
+Default configuration will capture all Pokemon.
+```"any": {"catch_above_cp": 0, "catch_above_iv": 0, "logic": "or"}```
+You can override the global configuration with Pokemon-specific options, such as:
+```"Pidgey": {"catch_above_cp": 0, "catch_above_iv": 0.8", "logic": "and"}```
+to only capture Pidgey with a good roll.
+Additionally, you can specify always_capture and never_capture flags. For example:
+```"Pidgey": {"never_capture": true}```
+will stop catching Pidgey entirely.
+
+## Release Configuration
+Default configuration will not release any Pokemon.
+```"any": {"release_under_cp": 0, "release_under_iv": 0, "logic": "or"}```
+You can override the global configuration with Pokemon-specific options, such as:
+```"Pidgey": {"release_below_cp": 0, "release_below_iv": 0.8", "logic": "or"}```
+to only release Pidgey with bad rolls.
+Additionally, you can specify always_release and never_release flags. For example:
+```"Pidgey": {"always_release": true}```
+will release all Pidgey caught.
+>>>>>>> origin/dev
 
 ### Evolve All Configuration
     By setting the `evolve_all` attribute in config.json, you can instruct the bot to automatically
@@ -238,7 +303,7 @@ sudo apt-get install nginx
 
 #### 2. Check the webserver
 Check if the webserver is running by using your browser and entering the IP address of your local machine/server.
-On a local machine this would be http://127.0.0.1. On AWS this is your public DNS if you havent configured an elastic IP.
+On a local machine this would be http://127.0.0.1. On AWS this is your public DNS if you haven't configured an elastic IP.
 
 #### 3. Change Base Directory of the Webserver
 ```
@@ -254,7 +319,7 @@ Comment out following line: ```root /var/www/html;``` and change it to the web f
 ### What's IV ?
 Here's the [introduction](http://bulbapedia.bulbagarden.net/wiki/Individual_values)
 
-### Does it run automatally?
+### Does it run automatically?
 Not yet, still need a trainer to train the script param. But we are very close to.
 ### Set GEO Location
 It works, use -l "xx.yyyy,zz.ttttt" to set lat long for location. -- diordache
@@ -305,52 +370,3 @@ If using multiple usernames format like this:
 ```var users = ["username1","username2"];```
 
 ---------
-## Contributors (Don't forget add yours here when you create PR)
- * eggins -- The first pull request :)
- * crack00r
- * ethervoid
- * Bashin
- * tstumm
- * TheGoldenXY
- * Reaver01
- * rarshonsky
- * earthchie
- * haykuro
- * 05-032
- * sinistance
- * CapCap
- * mzupan
- * gnekic(GeXx)
- * Shoh
- * luizperes
- * brantje
- * VirtualSatai
- * dmateusp
- * jtdroste
- * msoedov
- * Grace
- * Calcyfer
- * asaf400
- * guyz
- * DavidK1m
- * budi-khoirudin
- * riberod07
- * th3w4y
- * Leaklessgfy
- 
--------
-## Credits
-- [tejado](https://github.com/tejado) many thanks for the API
-- [Mila432](https://github.com/Mila432/Pokemon_Go_API) for the login secrets
-- [elliottcarlson](https://github.com/elliottcarlson) for the Google Auth PR
-- [AeonLucid](https://github.com/AeonLucid/POGOProtos) for improved protos
-- [AHAAAAAAA](https://github.com/AHAAAAAAA/PokemonGo-Map) for parts of the s2sphere stuff
-
-
-## Donation
-
-Bitcoin Address:  1PJMCx9NNQRasQYaa4MMff9yyNFffhHgLu
-
-<p align="center">
-<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=WQUXDC54W6EVY"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donateCC_LG.gif"></a>
-</p>
