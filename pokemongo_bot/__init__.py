@@ -92,7 +92,7 @@ class PokemonGoBot(object):
             since_timestamp_ms=timestamp,
             cell_id=cellid
         )
-        response_dict = get_api_response(self.api)()
+        response_dict = get_api_response(self.api)
         map_objects = response_dict.get('responses', {}).get('GET_MAP_OBJECTS', {})
         status = map_objects.get('status', None)
 
@@ -328,7 +328,7 @@ class PokemonGoBot(object):
 
     def use_lucky_egg(self):
         self.api.use_item_xp_boost(item_id=301)
-        inventory_req = get_api_response(self.api)()
+        inventory_req = get_api_response(self.api)
         return inventory_req
 
     def update_inventory(self):
