@@ -48,8 +48,9 @@ class ApiWrapper(object):
         # the response can still programatically be valid at this point
         # but still be wrong. we need to check if the server did sent what we asked it
         for request_caller in request_callers:
-            if not request_caller in result['responses']:
-                return False
+	    if request_caller != "_REQ_METHOD_LIST":
+            	if not request_caller in result['responses']:
+                	return False
 
         return True
 
