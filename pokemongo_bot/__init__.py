@@ -412,15 +412,12 @@ class PokemonGoBot(object):
         items_stock = {x.value: 0 for x in list(Item)}
 
         for item in inventory_dict:
-            try:
                 # print(item['inventory_item_data']['item'])
                 item_id = item['inventory_item_data']['item']['item_id']
                 item_count = item['inventory_item_data']['item']['count']
-
-                if item_id in items_stock:
-                    items_stock[item_id] = item_count
-            except Exception:
-                continue
+		if item_count and item_id:
+                    if item_id in items_stock:
+                        items_stock[item_id] = item_count
         return items_stock
 
     def item_inventory_count(self, id):
