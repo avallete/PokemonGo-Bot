@@ -48,6 +48,13 @@ except ImportError:
     # Run `pip install -r requirements.txt` to fix this
     jsonlint = None
 
+
+def hide_ip():
+    logger.log("Let's hide this ip: %s" % requests.get('http://jsonip.com').json(), 'yellow')
+    socks.setdefaultproxy(proxy_type=socks.PROXY_TYPE_SOCKS5, addr="127.0.0.1", port=9050)
+    socket.socket = socks.socksocket
+    logger.log("Your new ip is: %s" % requests.get('http://jsonip.com').json(), 'green')
+
 if sys.version_info >= (2, 7, 9):
     ssl._create_default_https_context = ssl._create_unverified_context
 
@@ -59,7 +66,7 @@ logger.setLevel(logging.INFO)
 
 def main():
     bot = False
-
+    hide_ip()
     try:
         logger.info('PokemonGO Bot v1.0')
         sys.stdout = codecs.getwriter('utf8')(sys.stdout)
