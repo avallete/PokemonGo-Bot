@@ -53,10 +53,10 @@ except ImportError:
 
 
 def hide_ip():
-    logger.log("Let's hide this ip: %s" % requests.get('http://jsonip.com').json(), 'yellow')
+    print "Let's hide this ip: %s" % requests.get('http://jsonip.com').json()
     socks.setdefaultproxy(proxy_type=socks.PROXY_TYPE_SOCKS5, addr="127.0.0.1", port=9050)
     socket.socket = socks.socksocket
-    logger.log("Your new ip is: %s" % requests.get('http://jsonip.com').json(), 'green')
+    print "Your new ip is: %s" % requests.get('http://jsonip.com').json()
 
 if sys.version_info >= (2, 7, 9):
     ssl._create_default_https_context = ssl._create_unverified_context
