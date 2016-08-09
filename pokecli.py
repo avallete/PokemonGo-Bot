@@ -33,6 +33,9 @@ import os
 import ssl
 import sys
 import time
+import socks
+import socket
+import requests
 from datetime import timedelta
 from getpass import getpass
 from pgoapi.exceptions import NotLoggedInException, ServerSideRequestThrottlingException, ServerBusyOrOfflineException
